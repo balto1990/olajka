@@ -1,0 +1,15 @@
+.cikk{
+    width: 70%;
+        text-align: justify;
+    }
+    
+    .main{
+        background-color: transparent;
+    }
+    
+    a.ref{
+    
+        background-color: transparent;
+        color: black;
+        font-style: italic;
+    }

@@ -82,8 +82,8 @@ INSERT INTO `menu` (`url`, `nev`, `szulo`, `jogosultsag`, `sorrend`) VALUES
 ('kiegeszitesek', 'Kiegészítések', 'elerhetoseg', '011', 50),
 ('kilepes', 'Kilépés', '', '011', 70),
 ('linkek', 'Linkek', '', '100', 30),
-('nyitolap', 'Nyitólap', '', '111', 10);
-('regisztracio', 'Regisztráció', '', '111', 90); /* új rekord a regisztrációnak*/
+('nyitolap', 'Nyitólap', '', '111', 10),
+('regisztracio', 'Regisztráció', '', '111', 90) /* új rekord a regisztrációnak*/
 
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

@@ -1,0 +1,34 @@
+.news
+{
+    width: 80%;
+}
+td{
+
+    width: 40%;
+}
+label{
+    margin: 10px;
+}
+
+
+textarea{
+    margin: 10px;
+
+}
+
+input[type=submit]
+{
+    margin: 10px;
+}
+
+table, th, td {
+    border: 1px solid black;
+    padding: 5px;
+  }
+  
+  
+  table.hirek{
+    table-layout: auto;
+    width: 100%;  
+  }
+  

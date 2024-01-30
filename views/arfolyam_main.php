@@ -1,158 +1,225 @@
-<!DOCTYPE html>
-<html lang="hu">
-<head>
-    <meta charset=""UTF-8">
-    <title>MNB árfolyamok lekérdezése PHP, SQL és SOAP segítségével</title>
-</head>
-<body>
-
 <?php
-    // Az elején lerendezzük, hogy esetleg felküldött értékek vannak-e, ha igen, betesszük változóba
-    if (isset($_POST['foreigncurr1'])) $fromCurrency = $_POST['foreigncurr1'];
-    if (isset($_POST['foreigncurr2'])) $toCurrency = $_POST['foreigncurr2'];
-    if (isset($_POST['firstdate'])) $firstDate = $_POST['firstdate'];
-    if (isset($_POST['lastdate'])) $lastDate = $_POST['lastdate'];
+?>
 
-    $kitoltott = isset($fromCurrency) && isset($toCurrency) && isset($firstDate) && isset($lastDate);
-    
-    // Ha minden ki van töltve, lekérdezzük az árfolyamot az időszakra
-    if ($kitoltott) {
-        $client = new SoapClient("http://www.mnb.hu/arfolyamok.asmx?WSDL");
-        $penznemparok = $toCurrency . "," . $fromCurrency;
-    
-        $param = array('startDate' => $firstDate, 'endDate' => $lastDate, 'currencyNames' => $penznemparok);
-        $result = $client->__soapCall('GetExchangeRates', array('parameters' => $param));
-        $xml = new SimpleXMLElement($result->GetExchangeRatesResult);
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="<?= SITE_ROOT?>css/mnb.css">
+</head>
+<body class="mnb_main">
 
-        $nap = $xml->Day;
-        $curr = $toCurrency . " - " . $fromCurrency;
-        for ($i = 0; $i < count($nap); $i++) {
-            $retData['valuta'][$i]['date'] = $nap[$i]['date'];
-            $retData['valuta'][$i]['curr'] = $curr;
-            $retData['valuta'][$i]['unit'] = (strpos($curr, "JPY") > -1) ? "100" : "1";
-            if ($nap[$i]->Rate[0]['curr'] == $fromCurrency) {
-                $retData['valuta'][$i]['foreigncurr2'] = str_replace(",", ".", $nap[$i]->Rate[0]);
-                $retData['valuta'][$i]['foreigncurr1'] = str_replace(",", ".", $nap[$i]->Rate[1]);
-            } else {
-                $retData['valuta'][$i]['foreigncurr1'] = str_replace(",", ".", $nap[$i]->Rate[0]);
-                $retData['valuta'][$i]['foreigncurr2'] = str_replace(",", ".", $nap[$i]->Rate[1]);
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<h2><?= (isset($viewData['uzenet']) ? $viewData['uzenet'] : "") ?></h2>
+
+
+<form action="" method="post" id="form1">
+    <label class="select" for="deviza">Válassza ki az átváltandó devizát:</label><br><br>
+
+    <input type="date" class="mnb" name="date" id="date" value="<?php echo date("Y-m-d"); ?>" required>
+    <input type="number" class="mnb" name="mennyi" id="mennyi" placeholder="Összeg" value="1" required>
+    <select class="mnb" name="deviza" id="deviza">
+        <option value="USD">USD - Amerikai dollár</option>
+        <option value="EUR">EUR - Euro</option>
+        <option value="HUF">HUF - Magyar forint</option>
+        <option value="GBP">GBP - Angol font</option>
+        <option value="AUD">AUD - Ausztrál dollár</option>
+        <option value="BGN">BGN - Bolgár leva</option>
+        <option value="CAD">CAD - Kanadai dollár</option>
+        <option value="CHF">CHF - Svájci frank</option>
+        <option value="CNY">CNY - Kínai juan</option>
+        <option value="CZK">CZK - Cseh korona</option>
+        <option value="DKK">DKK - Dán korona</option>
+        <option value="HRK">HRK - Horvát kuna</option>
+        <option value="JPY">JPY - Japán yen</option>
+    </select>
+
+    <select class="mnb" name="deviza2" id="deviza2">
+        <option value="HUF">HUF - Magyar forint</option>
+        <option value="CAD">CAD - Kanadai dollár</option>
+        <option value="HUF">HUF - Magyar forint</option>
+        <option value="EUR">EUR - Euro</option>
+        <option value="USD">USD - Amerikai dollár</option>
+        <option value="GBP">GBP - Angol font</option>
+        <option value="AUD">AUD - Ausztrál dollár</option>
+        <option value="BGN">BGN - Bolgár leva</option>
+        <option value="CHF">CHF - Svájci frank</option>
+        <option value="CNY">CNY - Kínai juan</option>
+        <option value="CZK">CZK - Cseh korona</option>
+        <option value="DKK">DKK - Dán korona</option>
+        <option value="HRK">HRK - Horvát kuna</option>
+        <option value="JPY">JPY - Japán yen</option>
+    </select>
+
+
+
+    <input class="mnb_btn" type="submit" name="valtas" value="Váltás" form="form1"><br><br>
+
+
+
+
+
+    <?php
+    if(isset($_POST['valtas'])){
+        if(isset($_POST['eredmeny'])){
+            ?>
+            <input class="mnb" value="<?php echo $_POST['mennyi']; ?>" readonly>
+            <input class="mnb" value="<?php echo $_POST['deviza']; ?>" readonly>
+            <input class="mnb" value="<?php echo number_format($_POST['eredmeny'], 2); ?>" readonly>
+            <input class="mnb" value="<?php echo $_POST['deviza2']; ?>" readonly>
+            <?php
+        }else{
+            ?>
+            <input class="mnb" value="" readonly>
+            <input class="mnb" value="" readonly>
+            <input class="mnb" value="" readonly>
+            <input class="mnb" value="" readonly>
+            <p class="select">Ezen a napon nem volt árfolyamváltozás!</p>
+            <?php
+        }
+    }else{
+        ?>
+            <input class="mnb" value="" readonly>
+            <input class="mnb" value="" readonly>
+            <input class="mnb" value="" readonly>
+            <input class="mnb" value="" readonly>
+        <?php
+    }
+    ?>
+
+</form>
+
+
+<!--ELSŐ LEKÉRDEZÉS VÉGE-->
+
+
+
+    <form action="" method="post" id="form2">
+        <br><br>
+        <label class="select" for="deviza">Devizapár árfolyama egy adott időintervallumban:</label><br>
+        <label class="select" for="deviza">Kezdete - Vége</label><br><br>
+
+        <input type="date" class="mnb" name="date_interval_1" id="date_interval_1" value="2021-10-01" required>
+        <input type="date" class="mnb" name="date_interval_2" id="date_interval_2" value="2021-11-05" required>
+        <select class="mnb" name="deviza_iv" id="deviza_iv">
+            <option value="USD">USD - Amerikai dollár</option>
+            <option value="EUR">EUR - Euro</option>
+            <option value="GBP">GBP - Angol font</option>
+            <option value="AUD">AUD - Ausztrál dollár</option>
+            <option value="BGN">BGN - Bolgár leva</option>
+            <option value="CAD">CAD - Kanadai dollár</option>
+            <option value="CHF">CHF - Svájci frank</option>
+            <option value="CNY">CNY - Kínai juan</option>
+            <option value="CZK">CZK - Cseh korona</option>
+            <option value="DKK">DKK - Dán korona</option>
+            <option value="HRK">HRK - Horvát kuna</option>
+            <option value="JPY">JPY - Japán yen</option>
+        </select>
+
+        <select class="mnb" name="deviza2_iv" id="deviza2_iv">
+            <option value="JPY">JPY - Japán yen</option>
+            <option value="CAD">CAD - Kanadai dollár</option>
+            <option value="EUR">EUR - Euro</option>
+            <option value="USD">USD - Amerikai dollár</option>
+            <option value="GBP">GBP - Angol font</option>
+            <option value="AUD">AUD - Ausztrál dollár</option>
+            <option value="BGN">BGN - Bolgár leva</option>
+            <option value="CHF">CHF - Svájci frank</option>
+            <option value="CNY">CNY - Kínai juan</option>
+            <option value="CZK">CZK - Cseh korona</option>
+            <option value="DKK">DKK - Dán korona</option>
+            <option value="HRK">HRK - Horvát kuna</option>
+
+        </select>
+        
+        <input class=mnb_btn type="submit" name="valtas_interval" value="Váltás" form="form2"><br><br>
+        
+     </form>
+
+<div style="overflow-x:auto;">
+<table>
+<?php
+    if(isset($_GET['valtas_interval'])){
+        
+        if($_POST['valtas_interval_end']  = true) 
+    {?>
+                    <thead>
+                    <tr>
+                        <th>Dátum</th>
+                        <th>Egység</th>
+                        <th>Deviza</th>
+                        <th>Árfolyam</th>
+                        <th>Egység</th>
+                        <th>Deviza</th>
+                        <th>Árfolyam</th>
+                    </tr>
+                    </thead>
+                     <?php
+                        $y = (count($_POST['date_arr']) -1);
+                        for ($x = 0; $x <= $y; $x++) {
+                        ?>
+                    <tbody>
+                    <tr>        
+                         <td><?php print_r($_POST['date_arr'][$x]); ?></td>
+                         <td><?php print_r($_POST['unit1_arr'][$x]); ?></td>
+                         <td><?php print_r($_POST['dev1_arr'][$x]); ?></td>
+                         <td><?php print_r($_POST['dev_rate1_arr'][$x]); ?></td>
+                         <td><?php print_r($_POST['unit2_arr'][$x]); ?></td>
+                         <td><?php print_r($_POST['dev2_arr'][$x]); ?></td>
+                         <td><?php print_r($_POST['dev_rate2_arr'][$x]); ?></td>
+                    </tr>
+                    </tbody>
+                        <?php
+                        $labels = $_POST['date_arr'];
+                        $title1 = $_POST['dev1_arr'][0];
+                        $adatok1 = $_POST['dev_rate1_arr'];
+                        $title2 = $_POST['dev2_arr'][0];
+                        $adatok2 = $_POST['dev_rate2_arr'];
+                        }
+                        ?>
+                
+<?php
+    }
+}
+?>
+</table>
+</div>
+<div>
+  <canvas id="myChart" width="200" height="100"></canvas>
+</div>
+<?php 
+
+?>
+<script>	//-------- diagramm --------
+
+const ctx = document.getElementById('myChart');
+const myChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+       datasets: [{
+           label: <?php echo json_encode($title1); ?>,
+           data: <?php echo json_encode($adatok1); ?>,
+           borderColor: 'rgb(255,28,37)',
+           borderWidth: 4,
+           order: 2
+       }, {
+           label: <?php echo json_encode($title2); ?>,
+           data: <?php echo json_encode($adatok2); ?>,
+           type: 'line',
+           borderColor: 'rgb(0,111,255)',
+           borderWidth: 4,
+           order: 1
+           
+       }],
+       
+       labels: <?php echo json_encode($labels); ?>
+   },
+    options: {
+        scales: {
+            y: {
+                beginAtZero: false
             }
         }
     }
-    // Ettől a ponttól fogva ha létezik a $retData változó, akkor felküldött adattal dolgozunk, ha nem létezik, akkor még nem ment le a lekérdezés
-?>
-
-<div class="container">
-    <h1>MNB Árfolyamok</h1><br>
-
-    <div><h2>Napi és havi árfolyamok:</h2></div>
-    <div><h3>Deviza választások</h3></div>
-
-    <form name="lekerdezes" action="<?= SITE_ROOT ?>.views/arfolyam_main" method="POST">
-        <div><h5>Amiről át szeretnénk váltani (1 egységet betöltő pénznem)</h5></div>
-        <select name="foreigncurr1" id="foreigncurr1" class="form-select" required>
-            <?php
-            try {
-                $client = new SoapClient("http://www.mnb.hu/arfolyamok.asmx?WSDL");
-                $result = $client->__soapCall('GetCurrencies', array());
-                $xml = new SimpleXMLElement($result->GetCurrenciesResult);
-
-                $deviza = $xml->Currencies->Curr;
-                for ($i = 0; $i < count($deviza); $i++) {
-                    // Ha létezik a fromCurrency változó (fentről), akkor egy "selected"-et még beillesztünk az adott opcióhoz, hogy felküldés után ki legyen választva az amit felküldtünk
-                    $kivalasztott = isset($fromCurrency) && $fromCurrency == $deviza[$i];
-                    $kivalaszto = '';
-                    if ($kivalasztott) $kivalaszto = ' selected';
-                    echo '<option' . $kivalaszto . '>' . $deviza[$i] . '</option>';
-                }
-            } catch (SoapFault $e) {
-                var_dump($e);
-            }
-            ?>
-        </select>
-
-        <div><h5>Amelyik pénznemre át szeretnénk váltani</h5></div>
-        <div class="col-auto">
-            <select name="foreigncurr2" id="foreigncurr2" class="form-select" required>
-                <?php
-                    for ($i = 0; $i < count($deviza); $i++) {
-                        // Ugyanúgy selected-et állítunk csak be
-                        $kivalasztott = isset($toCurrency) && $toCurrency == $deviza[$i];
-                        $kivalaszto = '';
-                        if ($kivalasztott) $kivalaszto = ' selected';
-                        echo '<option>' . $deviza[$i] . '</option>';
-                    }
-                ?>
-            </select>
-        </div>
-        
-        <div><h3>Dátumok</h3></div>
-        
-        <label for="kezdodatum">
-            <?php
-                // Itt pedig pl. egy value="2011-02-10" értéket teszünk be, hogy ki legyen választva a dátum, ha felküldött adattal dolgozunk már
-                $kivalasztott = isset($firstDate);
-                $kivalaszto = '';
-                if ($kivalasztott) $kivalaszto = 'value="' . $firstDate . '"';
-                echo '<h5>Kezdő dátum: <input type="date" ' . $kivalaszto . ' class="form-control" name="firstdate" id="kezdodatum" required></h5>';
-            ?>
-        </label>
-
-        <label for="zarodatum">
-            <?php
-                // Ugyanaz
-                $kivalasztott = isset($lastDate);
-                $kivalaszto = '';
-                if ($kivalasztott) $kivalaszto = 'value="' . $lastDate . '"';
-                echo '<h5>Záró dátum: <input type="date" ' . $kivalaszto . ' class="form-control" name="lastdate" id="zarodatum" required></h5>';
-            ?>
-        </label>
-
-        <button type="submit" class="exchangeratesubmit">Lekérdez</button>
-    </form>
-
-    <?php
-        // Ha volt felküldött adat, még tegyük bele ezt...
-        if (isset($retData)) {
-    ?>
-        <table class="table searching exchangerate">
-            <thead>
-                <tr>
-                    <th>Dátum</th>
-                    <th>Egység</th>
-                    <th>Külföldi pénznem</th>
-                    <th>Árfolyam</th>
-                </tr>
-            </thead>
-            <tbody id="eredmeny">
-
-            <?php
-                for ($i = 0; $i < count($retData['valuta']); $i++) {
-                    echo '<tr>';
-                    echo "<td>" . $retData['valuta'][$i]['date'] . "</td>";
-                    echo "<td>" . $retData['valuta'][$i]['unit'] . "</td>";
-                    echo "<td>" . $retData['valuta'][$i]['curr'] . "</td>";
-                    if (strpos($retData['valuta'][$i]['curr'], "HUF") > -1) {
-                        $ertek = ($retData['valuta'][$i]['foreigncurr2']=="") ? $retData['valuta'][$i]['foreigncurr1'] : $retData['valuta'][$i]['foreigncurr2'];
-                        echo "<td>" . $ertek . "</td>";
-                    } else {
-                        $ertek = (float)$retData['valuta'][$i]['foreigncurr2'] / (float)$retData['valuta'][$i]['foreigncurr1'];
-                        echo "<td>" . $ertek . "</td>";
-                    }
-                    echo '</tr>';
-                }
-                $retData = array();
-            ?>
-            </tbody>
-        </table>
-    <?php
-        }
-    ?>
-
-</div>
+});
+</script>
 </body>
-</html><h2>
-    <br>Alapinfók:<br>
-    <br>Alapinfó 1<br>
-    <br>Alapinfó 2<br>
-</h2>

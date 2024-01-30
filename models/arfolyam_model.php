@@ -1,157 +1,140 @@
-<!DOCTYPE html>
-<html lang="hu">
-<head>
-    <meta charset=""UTF-8">
-    <title>MNB árfolyamok lekérdezése PHP, SQL és SOAP segítségével</title>
-</head>
-<body>
-
 <?php
-    // Az elején lerendezzük, hogy esetleg felküldött értékek vannak-e, ha igen, betesszük változóba
-    if (isset($_POST['foreigncurr1'])) $fromCurrency = $_POST['foreigncurr1'];
-    if (isset($_POST['foreigncurr2'])) $toCurrency = $_POST['foreigncurr2'];
-    if (isset($_POST['firstdate'])) $firstDate = $_POST['firstdate'];
-    if (isset($_POST['lastdate'])) $lastDate = $_POST['lastdate'];
+class Arfolyam_Model
+{
+    public function arfolyam()
+    {
+        if (isset($_POST['valtas'])) {
+            if (isset($_POST["deviza"]) && ($_POST["deviza2"]) && ($_POST["date"]) && ($_POST["mennyi"])) {
+                $deviza = $_POST["deviza"];
+                $deviza2 = $_POST["deviza2"];
+                $date = $_POST["date"];
+                $mennyi = $_POST["mennyi"];
+                $nenezd = "HUF";
 
-    $kitoltott = isset($fromCurrency) && isset($toCurrency) && isset($firstDate) && isset($lastDate);
-    
-    // Ha minden ki van töltve, lekérdezzük az árfolyamot az időszakra
-    if ($kitoltott) {
-        $client = new SoapClient("http://www.mnb.hu/arfolyamok.asmx?WSDL");
-        $penznemparok = $toCurrency . "," . $fromCurrency;
-    
-        $param = array('startDate' => $firstDate, 'endDate' => $lastDate, 'currencyNames' => $penznemparok);
-        $result = $client->__soapCall('GetExchangeRates', array('parameters' => $param));
-        $xml = new SimpleXMLElement($result->GetExchangeRatesResult);
+                unset($currates);
 
-        $nap = $xml->Day;
-        $curr = $toCurrency . " - " . $fromCurrency;
-        for ($i = 0; $i < count($nap); $i++) {
-            $retData['valuta'][$i]['date'] = $nap[$i]['date'];
-            $retData['valuta'][$i]['curr'] = $curr;
-            $retData['valuta'][$i]['unit'] = (strpos($curr, "JPY") > -1) ? "100" : "1";
-            if ($nap[$i]->Rate[0]['curr'] == $fromCurrency) {
-                $retData['valuta'][$i]['foreigncurr2'] = str_replace(",", ".", $nap[$i]->Rate[0]);
-                $retData['valuta'][$i]['foreigncurr1'] = str_replace(",", ".", $nap[$i]->Rate[1]);
-            } else {
-                $retData['valuta'][$i]['foreigncurr1'] = str_replace(",", ".", $nap[$i]->Rate[0]);
-                $retData['valuta'][$i]['foreigncurr2'] = str_replace(",", ".", $nap[$i]->Rate[1]);
+                $client = new SoapClient("http://www.mnb.hu/arfolyamok.asmx?WSDL", array('trace' => true));
+                $currrates = $client->GetExchangeRates(array('startDate' => $date, 'endDate' => $date, 'currencyNames' => "$deviza"))->GetExchangeRatesResult;
+
+                $dom_root = new DOMDocument();
+                $dom_root->loadXML($currrates);
+
+                $searchNode = $dom_root->getElementsByTagName("Day");
+
+                foreach ($searchNode as $searchNode) {
+
+                    $rates = $searchNode->getElementsByTagName("Rate");
+
+                    foreach ($rates as $rate) {
+                        $unit_1 = "\t" . $rate->getAttribute('unit') . " ";
+                        $deviza_ = $rate->getAttribute('curr');
+                        $dev_rate = $rate->nodeValue;
+                        $deviza_rate = str_replace(",", ".", $dev_rate);
+           
+                    }
+                }
+
+                $currrates2 = $client->GetExchangeRates(array('startDate' => $date, 'endDate' => $date, 'currencyNames' => "$deviza2"))->GetExchangeRatesResult;
+
+                $dom_root = new DOMDocument();
+                $dom_root->loadXML($currrates2);
+
+                $searchNode = $dom_root->getElementsByTagName("Day");
+
+                foreach ($searchNode as $searchNode) {
+
+                    $rates = $searchNode->getElementsByTagName("Rate");
+
+                    foreach ($rates as $rate) {
+                        $unit_2 = "\t" . $rate->getAttribute('unit') . " ";
+                        $deviza_2 = $rate->getAttribute('curr');
+                        $dev_rate2 = $rate->nodeValue;
+                        $deviza_rate2 = str_replace(",", ".", $dev_rate2);
+                    }
+                }
+                if (isset($deviza_rate) or isset($deviza_rate2)) {
+                    if ($deviza == $nenezd and $deviza2 !== $nenezd) {   //HUH - Deviza
+                        $_POST['eredmeny'] = ($mennyi / $deviza_rate2) * $unit_2;
+                    }
+                    if ($deviza !== $nenezd and $deviza2 == $nenezd) {  //Deviza - HUF
+                        $_POST['eredmeny'] = ($deviza_rate * $mennyi) / $unit_1;
+                    }
+                    if ($deviza !== $nenezd and $deviza2 !== $nenezd) {   //Deviza - Deviza
+                        $_POST['eredmeny'] = (($deviza_rate * $unit_1) / ($deviza_rate2 * $unit_2)) * $mennyi;
+                    }
+                    if ($deviza == $nenezd and $deviza2 == $nenezd) {   //HUF - HUF
+                        $_POST['eredmeny'] = $mennyi;
+                    }
+                }
+            }
+        }
+
+
+        if (isset($_POST['valtas_interval'])) {
+            if (isset($_POST["deviza_iv"]) && ($_POST["deviza2_iv"]) && ($_POST["date_interval_1"]) && ($_POST["date_interval_2"])) {
+
+                $date_interval_1 = $_POST["date_interval_1"];
+                $date_interval_2 = $_POST["date_interval_2"];
+                $deviza_iv = $_POST["deviza_iv"];
+                $deviza2_iv = $_POST["deviza2_iv"];
+                $devizas_int = $_POST["deviza_iv"].",".$_POST["deviza2_iv"];
+                $nenezd = "HUF";
+
+                $client = new SoapClient("http://www.mnb.hu/arfolyamok.asmx?WSDL", array('trace' => true));
+                $currrates = $client->GetExchangeRates(array('startDate' => $date_interval_1, 'endDate' => $date_interval_2, 'currencyNames' => $devizas_int))->GetExchangeRatesResult;
+
+                $dom_root = new DOMDocument();
+                $dom_root->loadXML($currrates);
+
+                $searchNode = $dom_root->getElementsByTagName("Day");
+
+                $dev_rule = true;
+                $date_arr = array();
+                $dev1_arr = array();
+                $dev2_arr = array();
+                $unit1_arr = array();
+                $unit2_arr = array();
+                $dev_rate1_arr = array();
+                $dev_rate2_arr = array();
+                foreach ($searchNode as $searchNode) {
+                    $date = $searchNode->getAttribute('date');
+                    array_push($date_arr, $date);
+                    $rates = $searchNode->getElementsByTagName("Rate");
+
+                    foreach ($rates as $rate) {
+                        $unit_1_iv = "\t" . $rate->getAttribute('unit') . " ";
+                        $deviza_iv_ = $rate->getAttribute('curr');
+                        $dev_rate_iv = $rate->nodeValue;
+                        $deviza_rate_iv = str_replace(",", ".", $dev_rate_iv);
+
+                        if($dev_rule == true) {
+                            array_push($unit1_arr, $unit_1_iv);
+                            array_push($dev1_arr, $deviza_iv_);
+                            array_push($dev_rate1_arr, $deviza_rate_iv);
+                            $dev_rule = false;
+                        }else{
+                            array_push($unit2_arr, $unit_1_iv);
+                            array_push($dev2_arr, $deviza_iv_);
+                            array_push($dev_rate2_arr, $deviza_rate_iv);
+                            $dev_rule = true;
+                        }
+                    }
+                }
+                        $_POST['date_arr'] = $date_arr;
+                        $_POST['unit1_arr'] = $unit1_arr;
+                        $_POST['dev1_arr'] = $dev1_arr;
+                        $_POST['dev_rate1_arr'] = $dev_rate1_arr;
+                        $_POST['unit2_arr'] = $unit2_arr;
+                        $_POST['dev2_arr'] = $dev2_arr;
+                        $_POST['dev_rate2_arr'] = $dev_rate2_arr;
+
+                        $_POST['valtas_interval_end'] = true;
+                        $_GET['valtas_interval'] = true;
+                        
+                        }
+                        ?>
+                </table>
+                <?php
             }
         }
     }
-    // Ettől a ponttól fogva ha létezik a $retData változó, akkor felküldött adattal dolgozunk, ha nem létezik, akkor még nem ment le a lekérdezés
-?>
-
-<div class="container">
-    <h1>MNB Árfolyamok</h1><br>
-
-    <div><h2>Napi és havi árfolyamok:</h2></div>
-    <div><h3>Deviza választások</h3></div>
-
-    <form name="lekerdezes" action="arfolyam_main.php" method="POST">
-        <div><h5>Amiről át szeretnénk váltani (1 egységet betöltő pénznem)</h5></div>
-        <select name="foreigncurr1" id="foreigncurr1" class="form-select" required>
-            <?php
-            try {
-                $client = new SoapClient("http://www.mnb.hu/arfolyamok.asmx?WSDL");
-                $result = $client->__soapCall('GetCurrencies', array());
-                $xml = new SimpleXMLElement($result->GetCurrenciesResult);
-
-                $deviza = $xml->Currencies->Curr;
-                for ($i = 0; $i < count($deviza); $i++) {
-                    // Ha létezik a fromCurrency változó (fentről), akkor egy "selected"-et még beillesztünk az adott opcióhoz, hogy felküldés után ki legyen választva az amit felküldtünk
-                    $kivalasztott = isset($fromCurrency) && $fromCurrency == $deviza[$i];
-                    $kivalaszto = '';
-                    if ($kivalasztott) $kivalaszto = ' selected';
-                    echo '<option' . $kivalaszto . '>' . $deviza[$i] . '</option>';
-                }
-            } catch (SoapFault $e) {
-                var_dump($e);
-            }
-            ?>
-        </select>
-
-        <div><h5>Amelyik pénznemre át szeretnénk váltani</h5></div>
-        <div class="col-auto">
-            <select name="foreigncurr2" id="foreigncurr2" class="form-select" required>
-                <?php
-                    for ($i = 0; $i < count($deviza); $i++) {
-                        // Ugyanúgy selected-et állítunk csak be
-                        $kivalasztott = isset($toCurrency) && $toCurrency == $deviza[$i];
-                        $kivalaszto = '';
-                        if ($kivalasztott) $kivalaszto = ' selected';
-                        echo '<option>' . $deviza[$i] . '</option>';
-                    }
-                ?>
-            </select>
-        </div>
-        
-        <div><h3>Dátumok</h3></div>
-        
-        <label for="kezdodatum">
-            <?php
-                // Itt pedig pl. egy value="2011-02-10" értéket teszünk be, hogy ki legyen választva a dátum, ha felküldött adattal dolgozunk már
-                $kivalasztott = isset($firstDate);
-                $kivalaszto = '';
-                if ($kivalasztott) $kivalaszto = 'value="' . $firstDate . '"';
-                echo '<h5>Kezdő dátum: <input type="date" ' . $kivalaszto . ' class="form-control" name="firstdate" id="kezdodatum" required></h5>';
-            ?>
-        </label>
-
-        <label for="zarodatum">
-            <?php
-                // Ugyanaz
-                $kivalasztott = isset($lastDate);
-                $kivalaszto = '';
-                if ($kivalasztott) $kivalaszto = 'value="' . $lastDate . '"';
-                echo '<h5>Záró dátum: <input type="date" ' . $kivalaszto . ' class="form-control" name="lastdate" id="zarodatum" required></h5>';
-            ?>
-        </label>
-
-        <button type="submit" class="exchangeratesubmit">Lekérdez</button>
-    </form>
-
-    <?php
-        // Ha volt felküldött adat, még tegyük bele ezt...
-        if (isset($retData)) {
-    ?>
-        <table class="table searching exchangerate">
-            <thead>
-                <tr>
-                    <th>Dátum</th>
-                    <th>Egység</th>
-                    <th>Külföldi pénznem</th>
-                    <th>Árfolyam</th>
-                </tr>
-            </thead>
-            <tbody id="eredmeny">
-
-            <?php
-                for ($i = 0; $i < count($retData['valuta']); $i++) {
-                    echo '<tr>';
-                    echo "<td>" . $retData['valuta'][$i]['date'] . "</td>";
-                    echo "<td>" . $retData['valuta'][$i]['unit'] . "</td>";
-                    echo "<td>" . $retData['valuta'][$i]['curr'] . "</td>";
-                    if (strpos($retData['valuta'][$i]['curr'], "HUF") > -1) {
-                        $ertek = ($retData['valuta'][$i]['foreigncurr2']=="") ? $retData['valuta'][$i]['foreigncurr1'] : $retData['valuta'][$i]['foreigncurr2'];
-                        echo "<td>" . $ertek . "</td>";
-                    } else {
-                        $ertek = (float)$retData['valuta'][$i]['foreigncurr2'] / (float)$retData['valuta'][$i]['foreigncurr1'];
-                        echo "<td>" . $ertek . "</td>";
-                    }
-                    echo '</tr>';
-                }
-                $retData = array();
-            ?>
-            </tbody>
-        </table>
-    <?php
-        }
-    ?>
-
-</div>
-</body>
-</html>
-arfolyam_main.php
-
-arfolyam_main.php megjelenítése.
